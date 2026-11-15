@@ -1,0 +1,1 @@
+ALTER TABLE "messages" ADD COLUMN "status" varchar(20) DEFAULT 'completed' NOT NULL;
