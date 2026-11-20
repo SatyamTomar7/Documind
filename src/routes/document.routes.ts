@@ -7,6 +7,7 @@ import {
   getDocumentByIdController,
   deleteDocumentController,
   processDocumentController,
+  retryDocumentController,
   getDocumentStatusController,
   streamDocumentQuestionController
 } from "../controllers/document.controller";
@@ -50,6 +51,11 @@ router.post(
   "/documents/:id/process",
   authenticate,
   processDocumentController
+);
+router.post(
+  "/documents/:id/retry",
+  authenticate,
+  retryDocumentController,
 );
 router.get(
   "/documents/:id/status",

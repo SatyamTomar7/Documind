@@ -9,7 +9,10 @@ import {
   getDocumentStatus,
 } from "../services/document.services";
 import { streamDocumentQuestion } from "../services/rag.services";
-import { processDocument } from "../services/documentprocessing.services";
+import {
+  processDocument,
+  retryDocument,
+} from "../services/documentprocessing.services";
 import {
   deleteUploadedFile,
   validateUploadedFileContent,
@@ -167,6 +170,28 @@ export const processDocumentController = asyncHandler(
         )
       );
   }
+);
+export const retryDocumentController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const documentId = Number(req.params.id);
+
+    if (Number.isNaN(documentId)) {
+      res.status(400).json(new ApiResponse(400, "Invalid document ID"));
+      return;
+    }
+
+    const text = await retryDocument(req.user!.id, documentId);
+
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          "Document processing retry completed successfully",
+          { text },
+        ),
+      );
+  },
 );
 export const getDocumentStatusController = asyncHandler(
   async (req: Request, res: Response) => {

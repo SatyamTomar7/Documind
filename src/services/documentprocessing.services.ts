@@ -13,6 +13,7 @@ import { generateEmbedding } from "./embedding.services";
 import { normalizeText } from "../utils/text.utils";
 import { chunkText } from "../utils/chunk.utils";
 import { DOCUMENT_STATUS } from "../constants/document.constants";
+import { ApiError } from "../utils/Apierror";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 
@@ -150,6 +151,37 @@ console.log(documentChunks.embedding.mapToDriverValue([1, 2, 3]));
 
     throw error;
   }
+};
+
+export const retryDocument = async (
+  userId: number,
+  documentId: number,
+) => {
+  const [document] = await db
+    .select({
+      id: documents.id,
+      status: documents.status,
+    })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.id, documentId),
+        eq(documents.userId, userId),
+      ),
+    );
+
+  if (!document) {
+    throw new ApiError(404, "Document not found");
+  }
+
+  if (document.status !== DOCUMENT_STATUS.FAILED) {
+    throw new ApiError(
+      409,
+      "Only failed documents can be retried",
+    );
+  }
+
+  return processDocument(userId, documentId);
 };
 
 const extractAndProcessDocument = async (
