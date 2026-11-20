@@ -110,59 +110,56 @@ console.log(documentChunks.embedding.mapToDriverValue([1, 2, 3]));
         // 2. Normalize extracted text
         const text = normalizeText(rawText);
 
-        // 3. Save extracted text
-        await db
-          .insert(documentContents)
-          .values({
-            documentId: document.id,
-            content: text,
-          })
-          .onConflictDoUpdate({
-            target: documentContents.documentId,
-            set: {
-              content: text,
-              updatedAt: new Date(),
-            },
-          });
-
-        // 4. Create chunks
+        // 3. Create chunks and generate embeddings before replacing stored data
         const chunks = chunkText(text);
+        const chunksWithEmbeddings: (typeof documentChunks.$inferInsert)[] =
+          [];
 
-        // 5. Remove old chunks
-        await db
-          .delete(documentChunks)
-          .where(
-            eq(documentChunks.documentId, document.id)
-          );
+        for (const [index, content] of chunks.entries()) {
+          const embedding = await generateEmbedding(content);
 
-        // 6. Generate embeddings and save chunks
-        if (chunks.length > 0) {
-          const chunksWithEmbeddings = [];
-
-          for (const [index, content] of chunks.entries()) {
-            const embedding = await generateEmbedding(content);
-
-            chunksWithEmbeddings.push({
-              documentId: document.id,
-              content,
-              chunkIndex: index,
-              embedding,
-            });
-          }
-
-          await db
-            .insert(documentChunks)
-            .values(chunksWithEmbeddings);
+          chunksWithEmbeddings.push({
+            documentId: document.id,
+            content,
+            chunkIndex: index,
+            embedding,
+          });
         }
 
-        // 7. Mark processing complete
-        await db
-          .update(documents)
-          .set({
-            status: DOCUMENT_STATUS.COMPLETED,
-            updatedAt: new Date(),
-          })
-          .where(eq(documents.id, documentId));
+        await db.transaction(async (tx) => {
+          // 4. Replace content and chunks atomically
+          await tx
+            .insert(documentContents)
+            .values({
+              documentId: document.id,
+              content: text,
+            })
+            .onConflictDoUpdate({
+              target: documentContents.documentId,
+              set: {
+                content: text,
+                updatedAt: new Date(),
+              },
+            });
+
+          await tx
+            .delete(documentChunks)
+            .where(eq(documentChunks.documentId, document.id));
+
+          if (chunksWithEmbeddings.length > 0) {
+            await tx
+              .insert(documentChunks)
+              .values(chunksWithEmbeddings);
+          }
+
+          await tx
+            .update(documents)
+            .set({
+              status: DOCUMENT_STATUS.COMPLETED,
+              updatedAt: new Date(),
+            })
+            .where(eq(documents.id, documentId));
+        });
 
         return text;
       })(),
