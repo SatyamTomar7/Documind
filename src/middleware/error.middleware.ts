@@ -11,6 +11,20 @@ export const errorHandler = (
 ) => {
   console.error(error);
 
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
+
+  const sendError = (statusCode: number, message: string) => {
+    res.status(statusCode).json({
+      success: false,
+      statusCode,
+      message,
+      data: null,
+    });
+  };
+
   if (error instanceof multer.MulterError) {
     const statusCode = error.code === "LIMIT_FILE_SIZE" ? 413 : 400;
     const message =
@@ -18,41 +32,31 @@ export const errorHandler = (
         ? "Uploaded file exceeds the 10 MB limit"
         : "File upload failed";
 
-    res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message,
-      data: null,
-    });
+    sendError(statusCode, message);
     return;
   }
 
   if (error instanceof ApiError) {
-    res.status(error.statusCode).json({
-      success: false,
-      statusCode: error.statusCode,
-      message: error.message,
-      data: null,
-    });
+    sendError(error.statusCode, error.message);
     return;
   }
 
   const databaseError = getDatabaseApiError(error);
 
   if (databaseError) {
-    res.status(databaseError.statusCode).json({
-      success: false,
-      statusCode: databaseError.statusCode,
-      message: databaseError.message,
-      data: null,
-    });
+    sendError(databaseError.statusCode, databaseError.message);
     return;
   }
 
-  res.status(500).json({
-    success: false,
-    statusCode: 500,
-    message: "Internal server error",
-    data: null,
-  });
+  if (
+    error instanceof SyntaxError &&
+    typeof error === "object" &&
+    error !== null &&
+    "body" in error
+  ) {
+    sendError(400, "Malformed JSON request body");
+    return;
+  }
+
+  sendError(500, "Internal server error");
 };
