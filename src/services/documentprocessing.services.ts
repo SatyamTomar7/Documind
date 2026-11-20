@@ -26,11 +26,16 @@ export const extractPdfText = async (storageKey: string) => {
     data: fileBuffer,
   });
 
-  const pdfData = await parser.getText();
+  try {
+    const pdfData = await parser.getText();
 
-  await parser.destroy();
-
-  return pdfData.text;
+    return pdfData.text;
+  } catch (error) {
+    console.error("PDF text extraction failed:", error);
+    throw new ApiError(422, "Unable to extract text from PDF");
+  } finally {
+    await parser.destroy();
+  }
 };
 
 export const extractTxtText = async (storageKey: string) => {
