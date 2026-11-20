@@ -16,6 +16,25 @@ import { DOCUMENT_STATUS } from "../constants/document.constants";
 import { ApiError } from "../utils/Apierror";
 
 const uploadDir = path.join(process.cwd(), "uploads");
+const DOCUMENT_PROCESSING_TIMEOUT_MS = 5 * 60 * 1000;
+
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number) =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new ApiError(504, "Document processing timed out"));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
 
 export const extractPdfText = async (storageKey: string) => {
   const filePath = path.join(uploadDir, storageKey);
@@ -80,70 +99,75 @@ console.log(documentChunks.embedding.mapToDriverValue([1, 2, 3]));
     .where(eq(documents.id, documentId));
 
   try {
-    // 1. Extract text from document
-    const rawText = await extractAndProcessDocument(
-      document.storageKey,
-      document.mimeType,
+    return await withTimeout(
+      (async () => {
+        // 1. Extract text from document
+        const rawText = await extractAndProcessDocument(
+          document.storageKey,
+          document.mimeType,
+        );
+
+        // 2. Normalize extracted text
+        const text = normalizeText(rawText);
+
+        // 3. Save extracted text
+        await db
+          .insert(documentContents)
+          .values({
+            documentId: document.id,
+            content: text,
+          })
+          .onConflictDoUpdate({
+            target: documentContents.documentId,
+            set: {
+              content: text,
+              updatedAt: new Date(),
+            },
+          });
+
+        // 4. Create chunks
+        const chunks = chunkText(text);
+
+        // 5. Remove old chunks
+        await db
+          .delete(documentChunks)
+          .where(
+            eq(documentChunks.documentId, document.id)
+          );
+
+        // 6. Generate embeddings and save chunks
+        if (chunks.length > 0) {
+          const chunksWithEmbeddings = [];
+
+          for (const [index, content] of chunks.entries()) {
+            const embedding = await generateEmbedding(content);
+
+            chunksWithEmbeddings.push({
+              documentId: document.id,
+              content,
+              chunkIndex: index,
+              embedding,
+            });
+          }
+
+          await db
+            .insert(documentChunks)
+            .values(chunksWithEmbeddings);
+        }
+
+        // 7. Mark processing complete
+        await db
+          .update(documents)
+          .set({
+            status: DOCUMENT_STATUS.COMPLETED,
+            updatedAt: new Date(),
+          })
+          .where(eq(documents.id, documentId));
+
+        return text;
+      })(),
+      DOCUMENT_PROCESSING_TIMEOUT_MS,
     );
-
-    // 2. Normalize extracted text
-    const text = normalizeText(rawText);
-
-    // 3. Save extracted text
-    await db
-      .insert(documentContents)
-      .values({
-        documentId: document.id,
-        content: text,
-      })
-      .onConflictDoUpdate({
-        target: documentContents.documentId,
-        set: {
-          content: text,
-          updatedAt: new Date(),
-        },
-      });
-
-    // 4. Create chunks
-    const chunks = chunkText(text);
-
-    // 5. Remove old chunks
-    await db
-      .delete(documentChunks)
-      .where(
-        eq(documentChunks.documentId, document.id)
-      );
-
-    // 6. Generate embeddings and save chunks
-    if (chunks.length > 0) {
-      const chunksWithEmbeddings = [];
-
-      for (const [index, content] of chunks.entries()) {
-        const embedding = await generateEmbedding(content);
-
-        chunksWithEmbeddings.push({
-          documentId: document.id,
-          content,
-          chunkIndex: index,
-          embedding,
-        });
-      }
-
-      await db
-        .insert(documentChunks)
-        .values(chunksWithEmbeddings);
-    }
-
-    // 7. Mark processing complete
-    await db
-      .update(documents)
-      .set({
-        status: DOCUMENT_STATUS.COMPLETED,
-        updatedAt: new Date(),
-      })
-      .where(eq(documents.id, documentId));
-
-    return text;
   } catch (error) {
     // 8. Mark processing failed
     await db
