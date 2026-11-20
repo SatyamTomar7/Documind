@@ -2,7 +2,10 @@ import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validate.middleware";
 import { uploadDocument } from "../middleware/upload.middleware";
-import { documentIdSchema } from "../validator/document.validator";
+import {
+  documentIdSchema,
+  streamQuestionSchema,
+} from "../validator/document.validator";
 import {
   createDocumentController,
   getUserDocumentsController,
@@ -72,7 +75,7 @@ router.get(
 router.post(
   "/documents/:id/stream",
   authenticate,
-  validate(documentIdSchema),
+  validate(streamQuestionSchema),
   streamDocumentQuestionController
 );
 export default router;
