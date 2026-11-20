@@ -31,6 +31,12 @@ export const extractPdfText = async (storageKey: string) => {
   return pdfData.text;
 };
 
+export const extractTxtText = async (storageKey: string) => {
+  const filePath = path.join(uploadDir, storageKey);
+
+  return fs.readFile(filePath, "utf8");
+};
+
 export const processDocument = async (
   userId: number,
   documentId: number
@@ -62,7 +68,8 @@ console.log(documentChunks.embedding.mapToDriverValue([1, 2, 3]));
   try {
     // 1. Extract text from document
     const rawText = await extractAndProcessDocument(
-      document.storageKey
+      document.storageKey,
+      document.mimeType,
     );
 
     // 2. Normalize extracted text
@@ -138,7 +145,12 @@ console.log(documentChunks.embedding.mapToDriverValue([1, 2, 3]));
 };
 
 const extractAndProcessDocument = async (
-  storageKey: string
+  storageKey: string,
+  mimeType: string,
 ) => {
+  if (mimeType === "text/plain") {
+    return extractTxtText(storageKey);
+  }
+
   return await extractPdfText(storageKey);
 };
