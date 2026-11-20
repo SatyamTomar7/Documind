@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import userRouter from "./routes/user.routes";
 import authRouter from "./routes/auth.routes";
 import documentRouter from "./routes/document.routes";
@@ -10,6 +11,7 @@ import env from "./config/env";
 
 const app = express();
 
+app.use(helmet());
 app.use(express.json());
 
 app.use(healthRouter);
