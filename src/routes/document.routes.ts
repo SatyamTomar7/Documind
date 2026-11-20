@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware";
+import { validate } from "../middleware/validate.middleware";
 import { uploadDocument } from "../middleware/upload.middleware";
+import { documentIdSchema } from "../validator/document.validator";
 import {
   createDocumentController,
   getUserDocumentsController,
@@ -40,31 +42,37 @@ router.get(
 router.get(
   "/documents/:id",
   authenticate,
+  validate(documentIdSchema),
   getDocumentByIdController
 );
 router.delete(
   "/documents/:id",
   authenticate,
+  validate(documentIdSchema),
   deleteDocumentController
 );
 router.post(
   "/documents/:id/process",
   authenticate,
+  validate(documentIdSchema),
   processDocumentController
 );
 router.post(
   "/documents/:id/retry",
   authenticate,
+  validate(documentIdSchema),
   retryDocumentController,
 );
 router.get(
   "/documents/:id/status",
   authenticate,
+  validate(documentIdSchema),
   getDocumentStatusController
 );
 router.post(
   "/documents/:id/stream",
   authenticate,
+  validate(documentIdSchema),
   streamDocumentQuestionController
 );
 export default router;
