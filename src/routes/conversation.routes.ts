@@ -1,5 +1,12 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.middleware";
+import { validate } from "../middleware/validate.middleware";
+import {
+  conversationIdSchema,
+  createConversationSchema,
+  getConversationSchema,
+  messageSchema,
+} from "../validator/conversation.validator";
 import {
   createConversationController,
   getUserConversationsController,
@@ -13,6 +20,7 @@ const router = Router();
 router.post(
   "/conversations",
   authenticate,
+  validate(createConversationSchema),
   createConversationController
 );
 router.get(
@@ -23,21 +31,25 @@ router.get(
 router.get(
   "/conversations/:id",
   authenticate,
+  validate(getConversationSchema),
   getConversationController
 );
 router.delete(
   "/conversations/:id",
   authenticate,
+  validate(conversationIdSchema),
   deleteConversationController
 );
 router.post(
   "/conversations/:id/messages",
   authenticate,
+  validate(messageSchema),
   createMessageController
 );
 router.post(
   "/conversations/:id/messages/ask",
   authenticate,
+  validate(messageSchema),
   sendMessageController
 );
 export default router;
