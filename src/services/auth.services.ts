@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, lte } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 import { db } from "../db";
@@ -106,6 +106,10 @@ export const findUserByEmail = async (email: string) => {
 export const refreshAccessToken = async (
   refreshToken: string
 ) => {
+  await db
+    .delete(refreshTokens)
+    .where(lte(refreshTokens.expiresAt, new Date()));
+
   const tokenHash = createHash("sha256")
     .update(refreshToken)
     .digest("hex");
