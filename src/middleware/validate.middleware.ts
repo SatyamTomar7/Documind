@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { error } from "node:console";
 import { treeifyError, z } from "zod";
+import { ApiResponse } from "../utils/Apiresponse";
 
 export const validate = (schema: z.ZodType) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -11,12 +11,15 @@ export const validate = (schema: z.ZodType) => {
     });
 
     if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "Validation failed",
-        data: z.treeifyError(result.error),
-      });
+      return res
+        .status(400)
+        .json(
+          new ApiResponse(
+            400,
+            "Validation failed",
+            treeifyError(result.error),
+          ),
+        );
     }
 
     next();
