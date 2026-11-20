@@ -23,6 +23,7 @@
     "groq-sdk": "^1.6.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.13.0",
     "multer": "^2.4.0",
     "openai": "^7.23.0",
     "pdf-parse": "^2.4.5",

@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { PDFParse } from "pdf-parse";
+import mammoth from "mammoth";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import {
@@ -35,6 +36,13 @@ export const extractTxtText = async (storageKey: string) => {
   const filePath = path.join(uploadDir, storageKey);
 
   return fs.readFile(filePath, "utf8");
+};
+
+export const extractDocxText = async (storageKey: string) => {
+  const filePath = path.join(uploadDir, storageKey);
+  const result = await mammoth.extractRawText({ path: filePath });
+
+  return result.value;
 };
 
 export const processDocument = async (
@@ -150,6 +158,13 @@ const extractAndProcessDocument = async (
 ) => {
   if (mimeType === "text/plain") {
     return extractTxtText(storageKey);
+  }
+
+  if (
+    mimeType ===
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return extractDocxText(storageKey);
   }
 
   return await extractPdfText(storageKey);
