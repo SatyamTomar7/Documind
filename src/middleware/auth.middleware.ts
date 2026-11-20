@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiError } from "../utils/Apierror";
-import { verifyAccessToken } from "../utils/jwt";
+import {
+  verifyAccessToken,
+  type AccessTokenPayload,
+} from "../utils/jwt";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "../db/schema";
@@ -15,31 +18,36 @@ export const authenticate = async (
     throw new ApiError(401, "Authentication required");
   }
 
-  const token = authorization.slice(7);
+  const token = authorization.slice(7).trim();
 
   if (!token) {
     throw new ApiError(401, "Authentication required");
   }
 
-  try {
-    const payload = verifyAccessToken(token);
-const [user] = await db
-  .select({
-    id: users.id,
-    role: users.role,
-  })
-  .from(users)
-  .where(eq(users.id, payload.userId));
-  if (!user) {
-  throw new ApiError(401, "User not found");
-}
-req.user = {
-  id: user.id,
-  role: user.role,
-};
+  let payload: AccessTokenPayload;
 
-    next();
+  try {
+    payload = verifyAccessToken(token);
   } catch {
     throw new ApiError(401, "Invalid or expired token");
   }
+
+  const [user] = await db
+    .select({
+      id: users.id,
+      role: users.role,
+    })
+    .from(users)
+    .where(eq(users.id, payload.userId));
+
+  if (!user) {
+    throw new ApiError(401, "User not found");
+  }
+
+  req.user = {
+    id: user.id,
+    role: user.role,
+  };
+
+  next();
 };
