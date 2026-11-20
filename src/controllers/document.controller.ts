@@ -10,6 +10,10 @@ import {
 } from "../services/document.services";
 import { streamDocumentQuestion } from "../services/rag.services";
 import { processDocument } from "../services/documentprocessing.services";
+import {
+  deleteUploadedFile,
+  validateUploadedFileContent,
+} from "../utils/file.utils";
 export const createDocumentController = asyncHandler(
   async (req: Request, res: Response) => {
     if (!req.file) {
@@ -18,6 +22,19 @@ export const createDocumentController = asyncHandler(
         .json(
           new ApiResponse(400, "Document file is required")
         );
+      return;
+    }
+
+    const isValidContent = await validateUploadedFileContent(
+      req.file.filename,
+      req.file.mimetype,
+    );
+
+    if (!isValidContent) {
+      await deleteUploadedFile(req.file.filename);
+      res
+        .status(400)
+        .json(new ApiResponse(400, "Uploaded file content is invalid"));
       return;
     }
 
