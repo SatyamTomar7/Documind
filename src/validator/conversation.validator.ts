@@ -26,6 +26,10 @@ export const conversationIdSchema = z.object({
 export const messageSchema = z.object({
   params: conversationIdParams,
   body: z.object({
-    content: z.string().trim().min(1),
+    content: z
+      .string()
+      .trim()
+      .min(1)
+      .max(10_000, "Message content must be 10000 characters or fewer"),
   }),
 });
