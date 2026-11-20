@@ -7,19 +7,29 @@ export const createDocument = async (
   userId: number,
   file: Express.Multer.File
 ) => {
-  const [document] = await db
-    .insert(documents)
-    .values({
-      userId,
-      originalName: file.originalname,
-      storageKey: file.filename,
-      mimeType: file.mimetype,
-      size: file.size,
-status: DOCUMENT_STATUS.PENDING,
-    })
-    .returning();
+  try {
+    const [document] = await db
+      .insert(documents)
+      .values({
+        userId,
+        originalName: file.originalname,
+        storageKey: file.filename,
+        mimeType: file.mimetype,
+        size: file.size,
+        status: DOCUMENT_STATUS.PENDING,
+      })
+      .returning();
 
-  return document;
+    return document;
+  } catch (error) {
+    try {
+      await deleteUploadedFile(file.filename);
+    } catch (cleanupError) {
+      console.error("Failed to clean up uploaded file:", cleanupError);
+    }
+
+    throw error;
+  }
 };
 export const getUserDocuments = async (userId: number) => {
   const userDocuments = await db
