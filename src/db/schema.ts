@@ -17,6 +17,8 @@ export const users = pgTable("users", {
 
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: varchar("role", { length: 20 }).notNull().default("user"),
+  failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

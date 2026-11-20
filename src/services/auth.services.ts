@@ -8,6 +8,9 @@ import { ApiError } from "../utils/Apierror";
 import { generateAccessToken } from "../utils/jwt";
 import { generateRefreshToken } from "../utils/refreshtoken";
 
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
 export const loginUser = async (
   email: string,
   password: string
@@ -18,14 +21,50 @@ export const loginUser = async (
     throw new ApiError(401, "Invalid email or password");
   }
 
+  if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+    throw new ApiError(
+      423,
+      "Account temporarily locked. Please try again later."
+    );
+  }
+
   const isPasswordValid = await bcrypt.compare(
     password,
     user.passwordHash
   );
 
   if (!isPasswordValid) {
+    const failedLoginAttempts = user.failedLoginAttempts + 1;
+    const lockedUntil =
+      failedLoginAttempts >= MAX_FAILED_LOGIN_ATTEMPTS
+        ? new Date(Date.now() + LOCKOUT_DURATION_MS)
+        : null;
+
+    await db
+      .update(users)
+      .set({
+        failedLoginAttempts,
+        lockedUntil,
+      })
+      .where(eq(users.id, user.id));
+
+    if (lockedUntil) {
+      throw new ApiError(
+        423,
+        "Account temporarily locked. Please try again later."
+      );
+    }
+
     throw new ApiError(401, "Invalid email or password");
   }
+
+  await db
+    .update(users)
+    .set({
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    })
+    .where(eq(users.id, user.id));
 
   const accessToken = generateAccessToken(user.id);
 

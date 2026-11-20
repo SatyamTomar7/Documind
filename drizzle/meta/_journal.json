@@ -78,6 +78,13 @@
       "when": 1791635710085,
       "tag": "0010_handy_titanium_man",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795156154667,
+      "tag": "0011_lock_user_after_failed_logins",
+      "breakpoints": true
     }
   ]
 }
