@@ -20,20 +20,22 @@ import {
 
 export const gemini = new GoogleGenAI({
   apiKey: env.gemini_api_key,
+  httpOptions: {
+    timeout: env.llmTimeoutMs,
+  },
 });
 
 export const openai = env.openai_api_key
-  ? new OpenAI({ apiKey: env.openai_api_key })
+  ? new OpenAI({
+      apiKey: env.openai_api_key,
+      timeout: env.llmTimeoutMs,
+    })
   : null;
 
-// Groq's SDK otherwise waits one minute per attempt and retries twice. Since
-// it is the final fallback, fail fast instead of leaving the API request open
-// for several minutes when Groq is unavailable.
-const GROQ_TIMEOUT_MS = Number(process.env.GROQ_TIMEOUT_MS) || 20_000;
 const groq = env.groq_api_key
   ? new Groq({
       apiKey: env.groq_api_key,
-      timeout: GROQ_TIMEOUT_MS,
+      timeout: env.llmTimeoutMs,
       maxRetries: 0,
     })
   : null;

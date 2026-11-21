@@ -35,16 +35,22 @@ const documentChunkOverlap =
   process.env.DOCUMENT_CHUNK_OVERLAP === undefined
     ? 200
     : Number(process.env.DOCUMENT_CHUNK_OVERLAP);
+const llmTimeoutMs =
+  process.env.LLM_TIMEOUT_MS === undefined
+    ? 20_000
+    : Number(process.env.LLM_TIMEOUT_MS);
 
 if (
   !Number.isInteger(documentChunkSize) ||
   documentChunkSize <= 0 ||
   !Number.isInteger(documentChunkOverlap) ||
   documentChunkOverlap < 0 ||
-  documentChunkOverlap >= documentChunkSize
+  documentChunkOverlap >= documentChunkSize ||
+  !Number.isInteger(llmTimeoutMs) ||
+  llmTimeoutMs <= 0
 ) {
   throw new Error(
-    "DOCUMENT_CHUNK_SIZE must be a positive integer and DOCUMENT_CHUNK_OVERLAP must be between 0 and chunk size",
+    "Document chunk settings and LLM_TIMEOUT_MS must be valid positive values",
   );
 }
 
@@ -59,6 +65,7 @@ const env = {
   corsOrigins,
   documentChunkSize,
   documentChunkOverlap,
+  llmTimeoutMs,
 };
 
 export default env;
