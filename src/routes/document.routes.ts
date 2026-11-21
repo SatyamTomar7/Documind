@@ -4,6 +4,7 @@ import { validate } from "../middleware/validate.middleware";
 import { uploadDocument } from "../middleware/upload.middleware";
 import {
   documentIdSchema,
+  documentListSchema,
   streamQuestionSchema,
 } from "../validator/document.validator";
 import {
@@ -40,6 +41,7 @@ router.post(
 router.get(
   "/fetchdoc",
   authenticate,
+  validate(documentListSchema),
   getUserDocumentsController
 );
 router.get(

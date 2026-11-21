@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import { db } from "../db";
 import { documents, documentContents } from "../db/schema";
 import { deleteUploadedFile } from "../utils/file.utils";
@@ -31,13 +31,34 @@ export const createDocument = async (
     throw error;
   }
 };
-export const getUserDocuments = async (userId: number) => {
+export const getUserDocuments = async (
+  userId: number,
+  page: number,
+  limit: number,
+) => {
   const userDocuments = await db
     .select()
     .from(documents)
-    .where(eq(documents.userId, userId));
+    .where(eq(documents.userId, userId))
+    .orderBy(desc(documents.createdAt))
+    .limit(limit)
+    .offset((page - 1) * limit);
 
-  return userDocuments;
+  const [countResult] = await db
+    .select({ total: count() })
+    .from(documents)
+    .where(eq(documents.userId, userId));
+  const total = countResult?.total ?? 0;
+
+  return {
+    documents: userDocuments,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 export const getDocumentById = async (
   userId: number,

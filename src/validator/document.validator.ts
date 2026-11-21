@@ -18,3 +18,10 @@ export const streamQuestionSchema = z.object({
       .max(10_000, "Question must be 10000 characters or fewer"),
   }),
 });
+
+export const documentListSchema = z.object({
+  query: z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+  }),
+});
