@@ -1,10 +1,12 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { login, register } from './auth.api'
 import { AuthContext } from './auth.context'
 import { authStorage } from './auth.storage'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState(authStorage.getUser)
+
+  useEffect(() => authStorage.subscribeToClear(() => setUser(null)), [])
 
   const value = useMemo(
     () => ({

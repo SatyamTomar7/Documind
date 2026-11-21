@@ -3,6 +3,7 @@ import type { AuthTokens, User } from './auth.types'
 const accessTokenKey = 'documind.accessToken'
 const refreshTokenKey = 'documind.refreshToken'
 const userKey = 'documind.user'
+const authClearedEvent = 'documind.auth-cleared'
 
 export const authStorage = {
   getAccessToken: () => localStorage.getItem(accessTokenKey),
@@ -32,5 +33,26 @@ export const authStorage = {
     localStorage.removeItem(accessTokenKey)
     localStorage.removeItem(refreshTokenKey)
     localStorage.removeItem(userKey)
+    window.dispatchEvent(new Event(authClearedEvent))
+  },
+  subscribeToClear: (onClear: () => void) => {
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.newValue === null &&
+        (event.key === accessTokenKey ||
+          event.key === refreshTokenKey ||
+          event.key === userKey)
+      ) {
+        onClear()
+      }
+    }
+
+    window.addEventListener(authClearedEvent, onClear)
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      window.removeEventListener(authClearedEvent, onClear)
+      window.removeEventListener('storage', handleStorage)
+    }
   },
 }
