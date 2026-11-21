@@ -111,6 +111,13 @@ console.log(documentChunks.embedding.mapToDriverValue([1, 2, 3]));
         // 2. Normalize extracted text
         const text = normalizeText(rawText);
 
+        if (!text) {
+          throw new ApiError(
+            422,
+            "Document does not contain extractable text",
+          );
+        }
+
         // 3. Create chunks and generate embeddings before replacing stored data
         const chunks = chunkText(
           text,
