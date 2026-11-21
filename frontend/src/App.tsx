@@ -1,16 +1,42 @@
 import { QueryClientProvider } from '@tanstack/react-query'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/app-shell'
 import { ErrorBoundary } from './components/error-boundary'
 import { ProtectedRoute } from './components/protected-route'
 import { AuthProvider } from './features/auth/auth-provider'
 import { queryClient } from './lib/query-client'
-import { LoginPage } from './pages/login-page'
-import { DocumentsPage } from './pages/documents-page'
-import { ConversationsPage } from './pages/conversations-page'
-import { OverviewPage } from './pages/overview-page'
-import { NotFoundPage } from './pages/placeholder-page'
-import { RegisterPage } from './pages/register-page'
+
+const ConversationsPage = lazy(() =>
+  import('./pages/conversations-page').then(({ ConversationsPage: page }) => ({
+    default: page,
+  })),
+)
+const DocumentsPage = lazy(() =>
+  import('./pages/documents-page').then(({ DocumentsPage: page }) => ({
+    default: page,
+  })),
+)
+const LoginPage = lazy(() =>
+  import('./pages/login-page').then(({ LoginPage: page }) => ({
+    default: page,
+  })),
+)
+const OverviewPage = lazy(() =>
+  import('./pages/overview-page').then(({ OverviewPage: page }) => ({
+    default: page,
+  })),
+)
+const RegisterPage = lazy(() =>
+  import('./pages/register-page').then(({ RegisterPage: page }) => ({
+    default: page,
+  })),
+)
+const NotFoundPage = lazy(() =>
+  import('./pages/placeholder-page').then(({ NotFoundPage: page }) => ({
+    default: page,
+  })),
+)
 
 function App() {
   return (
@@ -18,29 +44,27 @@ function App() {
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Navigate to="/app" replace />} />
-              <Route element={<LoginPage />} path="/login" />
-              <Route element={<RegisterPage />} path="/register" />
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AppShell />} path="/app">
-                  <Route element={<OverviewPage />} index />
-                  <Route
-                    element={
-                      <DocumentsPage />
-                    }
-                    path="documents"
-                  />
-                  <Route
-                    element={
-                      <ConversationsPage />
-                    }
-                    path="conversations"
-                  />
+            <Suspense
+              fallback={
+                <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-slate-400">
+                  Loading workspace…
+                </div>
+              }
+            >
+              <Routes>
+                <Route path="/" element={<Navigate to="/app" replace />} />
+                <Route element={<LoginPage />} path="/login" />
+                <Route element={<RegisterPage />} path="/register" />
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AppShell />} path="/app">
+                    <Route element={<OverviewPage />} index />
+                    <Route element={<DocumentsPage />} path="documents" />
+                    <Route element={<ConversationsPage />} path="conversations" />
+                  </Route>
                 </Route>
-              </Route>
-              <Route element={<NotFoundPage />} path="*" />
-            </Routes>
+                <Route element={<NotFoundPage />} path="*" />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </QueryClientProvider>
       </AuthProvider>
