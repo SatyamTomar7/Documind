@@ -7,4 +7,5 @@ const pool = new Pool({
 
 });
 
+export { pool };
 export const db = drizzle(pool);

@@ -9,6 +9,7 @@ import { notFound } from "./middleware/notfound.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 import healthRouter from "./routes/health.routes";
 import env from "./config/env";
+import { pool } from "./db";
 
 const app = express();
 
@@ -28,6 +29,30 @@ app.use(documentRouter);
 app.use(conversationRouter);
 app.use(notFound);
 app.use(errorHandler);
-app.listen(env.port, () => {
+const server = app.listen(env.port, () => {
   console.log(`DocuMind server running on port ${env.port}`);
 });
+
+const shutdown = (signal: string) => {
+  console.log(`${signal} received. Shutting down gracefully...`);
+
+  server.close((serverError) => {
+    if (serverError) {
+      console.error("Failed to close HTTP server:", serverError);
+      process.exitCode = 1;
+    }
+
+    pool
+      .end()
+      .then(() => {
+        console.log("Database pool closed");
+      })
+      .catch((poolError: unknown) => {
+        console.error("Failed to close database pool:", poolError);
+        process.exitCode = 1;
+      });
+  });
+};
+
+process.once("SIGINT", () => shutdown("SIGINT"));
+process.once("SIGTERM", () => shutdown("SIGTERM"));
