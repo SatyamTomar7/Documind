@@ -536,32 +536,36 @@ export const generateAnswer = async (
   userId: number,
   history: ConversationHistory = [],
 ): Promise<AnswerResult> => {
+  const failures: string[] = [];
+
   try {
     return await generateWithGemini(question, context, userId, history);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    failures.push(`Gemini: ${describeProviderError(error)}`);
     console.error(
-      `Gemini failed [${error?.status ?? "unknown"}]: ${error?.message ?? error}. Trying OpenAI...`,
+      `Gemini failed: ${describeProviderError(error)}. Trying OpenAI...`,
     );
   }
 
   try {
     return await generateWithOpenAI(question, context, userId, history);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    failures.push(`OpenAI: ${describeProviderError(error)}`);
     console.error(
-      `OpenAI failed [${error?.status ?? "unknown"}]: ${error?.message ?? error}. Trying Groq...`,
+      `OpenAI failed: ${describeProviderError(error)}. Trying Groq...`,
     );
   }
 
   try {
     return await generateWithGroq(question, context, userId, history);
-  } catch (error: any) {
-    console.error("========== GROQ ERROR ==========");
-    console.error("Status:", error?.status);
-    console.error("Message:", error?.message);
-    console.error("Details:", JSON.stringify(error?.error, null, 2));
-    console.error("================================");
+  } catch (error: unknown) {
+    failures.push(`Groq: ${describeProviderError(error)}`);
+    console.error(`Groq failed: ${describeProviderError(error)}`);
 
-    throw error;
+    throw new Error(
+      `All LLM providers failed. ${failures.join(" | ")}`,
+      { cause: error },
+    );
   }
 };
 
@@ -570,6 +574,18 @@ export const generateAnswer = async (
 /* -------------------------------------------------------------------------- */
 
 type ChunkHandler = (chunk: string) => void;
+
+const describeProviderError = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return String(error.message);
+  }
+
+  return String(error);
+};
 
 const streamWithGemini = async (
   question: string,
@@ -672,16 +688,16 @@ export const generateAnswerStream = async (
     { name: "Groq", run: streamWithGroq },
   ];
 
-  let lastError: unknown;
+  const failures: string[] = [];
 
   for (const provider of providers) {
     try {
       await provider.run(question, context, trackedOnChunk, history);
       return;
-    } catch (error: any) {
-      lastError = error;
+    } catch (error: unknown) {
+      failures.push(`${provider.name}: ${describeProviderError(error)}`);
       console.error(
-        `${provider.name} stream failed [${error?.status ?? "unknown"}]: ${error?.message ?? error}`,
+        `${provider.name} stream failed: ${describeProviderError(error)}`,
       );
 
       if (emitted) {
@@ -690,7 +706,7 @@ export const generateAnswerStream = async (
     }
   }
 
-  throw lastError;
+  throw new Error(`All LLM providers failed. ${failures.join(" | ")}`);
 };
 export const rewriteQuestion = async (
   question: string,
