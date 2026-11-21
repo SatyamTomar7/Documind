@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "npm run test:tool-calling",
+    "test": "npm run test:unit",
+    "test:unit": "tsx --test scripts/auth.test.ts",
     "test:tool-calling": "tsx scripts/test-tool-calling.ts"
   },
   "keywords": [],

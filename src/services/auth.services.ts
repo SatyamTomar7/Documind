@@ -1,4 +1,3 @@
-import { createHash } from "crypto";
 import { eq, lte } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
@@ -6,7 +5,10 @@ import { db } from "../db";
 import { refreshTokens, users } from "../db/schema";
 import { ApiError } from "../utils/Apierror";
 import { generateAccessToken } from "../utils/jwt";
-import { generateRefreshToken } from "../utils/refreshtoken";
+import {
+  generateRefreshToken,
+  hashRefreshToken,
+} from "../utils/refreshtoken";
 
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
@@ -110,9 +112,7 @@ export const refreshAccessToken = async (
     .delete(refreshTokens)
     .where(lte(refreshTokens.expiresAt, new Date()));
 
-  const tokenHash = createHash("sha256")
-    .update(refreshToken)
-    .digest("hex");
+  const tokenHash = hashRefreshToken(refreshToken);
 
   const [storedToken] = await db
     .select({

@@ -5,6 +5,19 @@ export type AccessTokenPayload = {
   userId: number;
 };
 
+export const isValidAccessTokenPayload = (
+  payload: unknown,
+): payload is AccessTokenPayload => {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "userId" in payload &&
+    typeof payload.userId === "number" &&
+    Number.isInteger(payload.userId) &&
+    payload.userId > 0
+  );
+};
+
 export const generateAccessToken = (userId: number) => {
   return jwt.sign(
     { userId },
@@ -21,14 +34,7 @@ export const verifyAccessToken = (token: string): AccessTokenPayload => {
     authConfig.jwtSecret
   );
 
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("userId" in payload) ||
-    typeof payload.userId !== "number" ||
-    !Number.isInteger(payload.userId) ||
-    payload.userId <= 0
-  ) {
+  if (!isValidAccessTokenPayload(payload)) {
     throw new Error("Invalid access token payload");
   }
 
