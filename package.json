@@ -6,6 +6,8 @@
   "scripts": {
     "test": "npm run test:unit",
     "test:unit": "tsx --test scripts/auth.test.ts scripts/document.test.ts scripts/rag.test.ts",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "tsx scripts/migrate.ts",
     "test:tool-calling": "tsx scripts/test-tool-calling.ts"
   },
   "keywords": [],
