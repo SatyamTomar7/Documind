@@ -63,9 +63,10 @@ export const documents = pgTable("documents", {
     .default("pending"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
-
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("documents_user_created_idx").on(table.userId, table.createdAt),
+]);
 export const documentContents = pgTable("document_contents", {
   id: serial("id").primaryKey(),
 
@@ -117,6 +118,7 @@ export const documentChunks = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
+    index("document_chunks_document_id_idx").on(table.documentId),
     index("document_chunks_embedding_idx").using(
       "hnsw",
       table.embedding.op("vector_cosine_ops")
@@ -143,7 +145,12 @@ export const conversations = pgTable("conversations", {
   updatedAt: timestamp("updated_at")
     .defaultNow()
     .notNull(),
-});
+}, (table) => [
+  index("conversations_user_updated_idx").on(
+    table.userId,
+    table.updatedAt,
+  ),
+]);
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
 
@@ -160,4 +167,9 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at")
     .defaultNow()
     .notNull(),
-});
+}, (table) => [
+  index("messages_conversation_id_idx").on(
+    table.conversationId,
+    table.id,
+  ),
+]);
