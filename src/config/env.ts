@@ -6,6 +6,25 @@ if (!jwtSecret) {
   throw new Error("JWT_SECRET is required");
 }
 
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is required");
+}
+
+try {
+  const parsedDatabaseUrl = new URL(databaseUrl);
+
+  if (
+    parsedDatabaseUrl.protocol !== "postgres:" &&
+    parsedDatabaseUrl.protocol !== "postgresql:"
+  ) {
+    throw new Error();
+  }
+} catch {
+  throw new Error("DATABASE_URL must be a valid PostgreSQL connection URL");
+}
+
 const geminiApiKey = process.env.GEMINI_API_KEY;
 if (!geminiApiKey) {
   throw new Error("GEMINI_API_KEY is required");
@@ -56,7 +75,7 @@ if (
 
 const env = {
   port: Number(process.env.PORT) || 3000,
-  databaseUrl: process.env.DATABASE_URL,
+  databaseUrl,
   jwtSecret,
   gemini_api_key: geminiApiKey,
   openai_api_key:openaiApiKey,
