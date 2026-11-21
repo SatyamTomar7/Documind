@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "npm run test:unit",
-    "test:unit": "tsx --test scripts/auth.test.ts scripts/document.test.ts",
+    "test:unit": "tsx --test scripts/auth.test.ts scripts/document.test.ts scripts/rag.test.ts",
     "test:tool-calling": "tsx scripts/test-tool-calling.ts"
   },
   "keywords": [],
