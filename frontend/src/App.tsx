@@ -7,8 +7,9 @@ import { AuthProvider } from './features/auth/auth-provider'
 import { queryClient } from './lib/query-client'
 import { LoginPage } from './pages/login-page'
 import { DocumentsPage } from './pages/documents-page'
+import { ConversationsPage } from './pages/conversations-page'
 import { OverviewPage } from './pages/overview-page'
-import { NotFoundPage, PlaceholderPage } from './pages/placeholder-page'
+import { NotFoundPage } from './pages/placeholder-page'
 import { RegisterPage } from './pages/register-page'
 
 function App() {
@@ -32,10 +33,7 @@ function App() {
                   />
                   <Route
                     element={
-                      <PlaceholderPage
-                        description="Your document conversations will appear here."
-                        title="Conversations"
-                      />
+                      <ConversationsPage />
                     }
                     path="conversations"
                   />
