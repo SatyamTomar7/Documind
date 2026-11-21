@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
-import { useAuth } from '../features/auth/auth.context'
+import { useAuth } from '../features/auth/use-auth'
 
 const loginSchema = z.object({
   email: z.email('Enter a valid email address'),
