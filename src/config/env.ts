@@ -27,6 +27,27 @@ const corsOrigins = (process.env.CORS_ORIGIN ?? "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const documentChunkSize =
+  process.env.DOCUMENT_CHUNK_SIZE === undefined
+    ? 1000
+    : Number(process.env.DOCUMENT_CHUNK_SIZE);
+const documentChunkOverlap =
+  process.env.DOCUMENT_CHUNK_OVERLAP === undefined
+    ? 200
+    : Number(process.env.DOCUMENT_CHUNK_OVERLAP);
+
+if (
+  !Number.isInteger(documentChunkSize) ||
+  documentChunkSize <= 0 ||
+  !Number.isInteger(documentChunkOverlap) ||
+  documentChunkOverlap < 0 ||
+  documentChunkOverlap >= documentChunkSize
+) {
+  throw new Error(
+    "DOCUMENT_CHUNK_SIZE must be a positive integer and DOCUMENT_CHUNK_OVERLAP must be between 0 and chunk size",
+  );
+}
+
 const env = {
   port: Number(process.env.PORT) || 3000,
   databaseUrl: process.env.DATABASE_URL,
@@ -36,6 +57,8 @@ const env = {
   groq_api_key:groqApiKey,
   cohere_api_key: cohereapikey,
   corsOrigins,
+  documentChunkSize,
+  documentChunkOverlap,
 };
 
 export default env;

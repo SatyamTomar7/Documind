@@ -14,6 +14,7 @@ import { normalizeText } from "../utils/text.utils";
 import { chunkText } from "../utils/chunk.utils";
 import { DOCUMENT_STATUS } from "../constants/document.constants";
 import { ApiError } from "../utils/Apierror";
+import env from "../config/env";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 const DOCUMENT_PROCESSING_TIMEOUT_MS = 5 * 60 * 1000;
@@ -111,7 +112,11 @@ console.log(documentChunks.embedding.mapToDriverValue([1, 2, 3]));
         const text = normalizeText(rawText);
 
         // 3. Create chunks and generate embeddings before replacing stored data
-        const chunks = chunkText(text);
+        const chunks = chunkText(
+          text,
+          env.documentChunkSize,
+          env.documentChunkOverlap,
+        );
         const chunksWithEmbeddings: (typeof documentChunks.$inferInsert)[] =
           [];
 
