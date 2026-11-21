@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/protected-route'
 import { AuthProvider } from './features/auth/auth-provider'
 import { queryClient } from './lib/query-client'
 import { LoginPage } from './pages/login-page'
+import { DocumentsPage } from './pages/documents-page'
 import { OverviewPage } from './pages/overview-page'
 import { NotFoundPage, PlaceholderPage } from './pages/placeholder-page'
 import { RegisterPage } from './pages/register-page'
@@ -25,10 +26,7 @@ function App() {
                   <Route element={<OverviewPage />} index />
                   <Route
                     element={
-                      <PlaceholderPage
-                        description="Your uploaded files will appear here."
-                        title="Documents"
-                      />
+                      <DocumentsPage />
                     }
                     path="documents"
                   />
