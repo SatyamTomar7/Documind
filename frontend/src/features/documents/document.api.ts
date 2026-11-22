@@ -20,11 +20,19 @@ export const getDocumentStatus = async (documentId: number) => {
   return response.data.data
 }
 
-export const uploadDocument = async (file: File) => {
+export const uploadDocument = async (
+  file: File,
+  onProgress?: (progress: number) => void,
+) => {
   const formData = new FormData()
   formData.append('file', file)
   const response = await api.post<ApiResponse<DocumentItem>>('/documents', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (event) => {
+      if (event.total) {
+        onProgress?.(Math.round((event.loaded / event.total) * 100))
+      }
+    },
   })
   return response.data.data
 }

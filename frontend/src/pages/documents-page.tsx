@@ -8,10 +8,13 @@ import {
 import type { DocumentItem, DocumentStatus } from '../features/documents/document.types'
 
 const acceptedTypes = '.pdf,.txt,.docx'
+const maxUploadSize = 10 * 1024 * 1024
+const allowedExtensions = ['.pdf', '.txt', '.docx']
 
 export function DocumentsPage() {
   const [page, setPage] = useState(1)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { data, isLoading, isError } = useDocuments(page)
   const { upload, process, retry, remove } = useDocumentMutations()
@@ -20,11 +23,31 @@ export function DocumentsPage() {
   const handleUpload = async (file?: File) => {
     if (!file) return
     setErrorMessage(null)
+    const lowerName = file.name.toLowerCase()
+
+    if (!allowedExtensions.some((extension) => lowerName.endsWith(extension))) {
+      setErrorMessage('Only PDF, TXT, and DOCX files are allowed.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    if (file.size > maxUploadSize) {
+      setErrorMessage('The selected file exceeds the 10 MB upload limit.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    setUploadProgress(0)
     try {
-      await upload.mutateAsync(file)
+      await upload.mutateAsync({
+        file,
+        onProgress: setUploadProgress,
+      })
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch {
       setErrorMessage('Upload failed. Check the file type and size, then try again.')
+    } finally {
+      setUploadProgress(null)
     }
   }
 
@@ -64,10 +87,26 @@ export function DocumentsPage() {
             type="button"
           >
             <Upload size={18} />
-            Upload document
+            {uploadProgress === null ? 'Upload document' : `Uploading ${uploadProgress}%`}
           </button>
         </div>
       </div>
+
+      {uploadProgress !== null && (
+        <div
+          aria-label="Upload progress"
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={uploadProgress}
+          className="mt-6 h-2 overflow-hidden rounded-full bg-slate-800"
+          role="progressbar"
+        >
+          <div
+            className="h-full rounded-full bg-cyan-400 transition-[width]"
+            style={{ width: `${uploadProgress}%` }}
+          />
+        </div>
+      )}
 
       {errorMessage && (
         <p className="mt-6 rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
