@@ -14,6 +14,28 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean
 }
 
+type RefreshResponse = {
+  data: {
+    accessToken: string
+    refreshToken: string
+  }
+}
+
+let refreshPromise: Promise<RefreshResponse['data']> | null = null
+
+function refreshTokens(refreshToken: string) {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post<RefreshResponse>(`${apiBaseUrl}/auth/refresh`, { refreshToken })
+      .then((response) => response.data.data)
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+
+  return refreshPromise
+}
+
 api.interceptors.request.use((config) => {
   const accessToken = authStorage.getAccessToken()
   if (accessToken) {
@@ -41,10 +63,7 @@ api.interceptors.response.use(
     config._retry = true
 
     try {
-      const refreshResponse = await axios.post<{
-        data: { accessToken: string; refreshToken: string }
-      }>(`${apiBaseUrl}/auth/refresh`, { refreshToken })
-      const tokens = refreshResponse.data.data
+      const tokens = await refreshTokens(refreshToken)
       authStorage.updateAccessToken(tokens.accessToken)
       authStorage.updateRefreshToken(tokens.refreshToken)
       config.headers.Authorization = `Bearer ${tokens.accessToken}`
