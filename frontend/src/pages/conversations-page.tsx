@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { MessageSquare, Plus, Send, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { MessageSquare, Plus, Send, Square, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import {
@@ -9,6 +9,7 @@ import {
   useConversations,
 } from '../features/conversations/conversation.hooks'
 import type { Conversation } from '../features/conversations/conversation.types'
+import { streamDocumentQuestion } from '../features/conversations/conversation.api'
 
 const createSchema = z.object({
   documentId: z.coerce.number().int().positive('Enter a valid document ID'),
@@ -25,19 +26,34 @@ type QuestionValues = z.infer<typeof questionSchema>
 export function ConversationsPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [streamingAnswer, setStreamingAnswer] = useState('')
+  const [streamingQuestion, setStreamingQuestion] = useState<string | null>(null)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const streamControllerRef = useRef<AbortController | null>(null)
   const { data: conversations, isLoading } = useConversations()
   const detail = useConversation(selectedId)
-  const { create, ask, remove } = useConversationMutations()
+  const { create, remove } = useConversationMutations()
   const createForm = useForm<z.input<typeof createSchema>, unknown, CreateValues>({
     resolver: zodResolver(createSchema),
   })
   const questionForm = useForm<QuestionValues>({ resolver: zodResolver(questionSchema) })
 
+  useEffect(() => () => streamControllerRef.current?.abort(), [])
+
+  const selectConversation = (conversationId: number | null) => {
+    streamControllerRef.current?.abort()
+    streamControllerRef.current = null
+    setIsStreaming(false)
+    setStreamingAnswer('')
+    setStreamingQuestion(null)
+    setSelectedId(conversationId)
+  }
+
   const onCreate = async (values: CreateValues) => {
     setErrorMessage(null)
     try {
       const conversation = await create.mutateAsync(values)
-      setSelectedId(conversation.id)
+      selectConversation(conversation.id)
       createForm.reset()
     } catch {
       setErrorMessage('Could not create the conversation. Check the document ID.')
@@ -45,22 +61,54 @@ export function ConversationsPage() {
   }
 
   const onAsk = async (values: QuestionValues) => {
-    if (selectedId === null) return
+    if (selectedId === null || !detail.data) return
     setErrorMessage(null)
+    streamControllerRef.current?.abort()
+    const controller = new AbortController()
+    streamControllerRef.current = controller
+    setIsStreaming(true)
+    setStreamingQuestion(values.content)
+    setStreamingAnswer('')
+
     try {
-      await ask.mutateAsync({ conversationId: selectedId, content: values.content })
+      await streamDocumentQuestion(
+        detail.data.conversation.documentId,
+        values.content,
+        (event) => {
+          if (event.type === 'chunk') {
+            setStreamingAnswer((current) => current + event.chunk)
+          } else if (event.type === 'error') {
+            setErrorMessage(event.message)
+          }
+        },
+        controller.signal,
+      )
       questionForm.reset()
-      await detail.refetch()
     } catch {
-      setErrorMessage('Could not generate an answer. Please try again.')
+      if (!controller.signal.aborted) {
+        setErrorMessage('Could not generate an answer. Please try again.')
+      }
+    } finally {
+      if (streamControllerRef.current === controller) {
+        streamControllerRef.current = null
+        setIsStreaming(false)
+      }
     }
+  }
+
+  const cancelStreaming = () => {
+    streamControllerRef.current?.abort()
+    streamControllerRef.current = null
+    setIsStreaming(false)
+    setStreamingQuestion(null)
+    setStreamingAnswer('')
   }
 
   const onDelete = async (conversation: Conversation) => {
     setErrorMessage(null)
     try {
       await remove.mutateAsync(conversation.id)
-      if (selectedId === conversation.id) setSelectedId(null)
+      if (selectedId === conversation.id) selectConversation(null)
     } catch {
       setErrorMessage('Could not delete this conversation.')
     }
@@ -119,7 +167,7 @@ export function ConversationsPage() {
                 conversation={conversation}
                 key={conversation.id}
                 onDelete={() => void onDelete(conversation)}
-                onSelect={() => setSelectedId(conversation.id)}
+                onSelect={() => selectConversation(conversation.id)}
                 selected={conversation.id === selectedId}
               />
             ))}
@@ -167,6 +215,22 @@ export function ConversationsPage() {
                     </div>
                   </div>
                 ))}
+                {streamingQuestion && (
+                  <div className="ml-auto max-w-xl">
+                    <p className="mb-1 text-xs uppercase tracking-wider text-slate-600">user</p>
+                    <div className="rounded-2xl rounded-br-sm bg-cyan-400 px-4 py-3 text-slate-950">
+                      {streamingQuestion}
+                    </div>
+                  </div>
+                )}
+                {(streamingAnswer || streamingQuestion) && (
+                  <div className="max-w-2xl">
+                    <p className="mb-1 text-xs uppercase tracking-wider text-slate-600">assistant</p>
+                    <div className="min-h-12 rounded-2xl rounded-bl-sm bg-slate-800 px-4 py-3 text-slate-200">
+                      {streamingAnswer || 'Generating answer…'}
+                    </div>
+                  </div>
+                )}
               </div>
               <form className="border-t border-slate-800 p-4" onSubmit={questionForm.handleSubmit(onAsk)}>
                 <div className="flex gap-3">
@@ -176,12 +240,19 @@ export function ConversationsPage() {
                     {...questionForm.register('content')}
                   />
                   <button
-                    aria-label="Send question"
+                    aria-label={isStreaming ? 'Cancel answer' : 'Send question'}
                     className="self-end rounded-xl bg-cyan-400 p-3 text-slate-950 hover:bg-cyan-300 disabled:opacity-50"
-                    disabled={ask.isPending}
-                    type="submit"
+                    onClick={
+                      isStreaming
+                        ? (event) => {
+                            event.preventDefault()
+                            cancelStreaming()
+                          }
+                        : undefined
+                    }
+                    type={isStreaming ? 'button' : 'submit'}
                   >
-                    <Send size={18} />
+                    {isStreaming ? <Square size={18} /> : <Send size={18} />}
                   </button>
                 </div>
                 {questionForm.formState.errors.content && (
