@@ -1,10 +1,22 @@
 import { api } from '../../lib/api'
-import type { ApiResponse, DocumentItem, DocumentListResponse } from './document.types'
+import type {
+  ApiResponse,
+  DocumentItem,
+  DocumentListResponse,
+  DocumentStatusResponse,
+} from './document.types'
 
 export const getDocuments = async (page = 1, limit = 20) => {
   const response = await api.get<ApiResponse<DocumentListResponse>>('/fetchdoc', {
     params: { page, limit },
   })
+  return response.data.data
+}
+
+export const getDocumentStatus = async (documentId: number) => {
+  const response = await api.get<ApiResponse<DocumentStatusResponse>>(
+    `/documents/${documentId}/status`,
+  )
   return response.data.data
 }
 

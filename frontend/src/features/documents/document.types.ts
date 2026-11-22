@@ -10,6 +10,11 @@ export type DocumentItem = {
   updatedAt: string
 }
 
+export type DocumentStatusResponse = Pick<
+  DocumentItem,
+  'id' | 'originalName' | 'status' | 'updatedAt'
+>
+
 export type DocumentListResponse = {
   documents: DocumentItem[]
   pagination: {

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   deleteDocument,
   getDocuments,
+  getDocumentStatus,
   processDocument,
   retryDocument,
   uploadDocument,
@@ -13,6 +14,16 @@ export function useDocuments(page: number) {
   return useQuery({
     queryKey: [...documentsQueryKey, page],
     queryFn: () => getDocuments(page),
+  })
+}
+
+export function useDocumentStatus(documentId: number, enabled: boolean) {
+  return useQuery({
+    enabled,
+    queryKey: [...documentsQueryKey, 'status', documentId],
+    queryFn: () => getDocumentStatus(documentId),
+    refetchInterval: (query) =>
+      query.state.data?.status === 'processing' ? 2_000 : false,
   })
 }
 

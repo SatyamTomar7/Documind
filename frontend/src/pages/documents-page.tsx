@@ -1,6 +1,10 @@
 import { FileText, LoaderCircle, RefreshCw, Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useDocuments, useDocumentMutations } from '../features/documents/document.hooks'
+import {
+  useDocuments,
+  useDocumentMutations,
+  useDocumentStatus,
+} from '../features/documents/document.hooks'
 import type { DocumentItem, DocumentStatus } from '../features/documents/document.types'
 
 const acceptedTypes = '.pdf,.txt,.docx'
@@ -98,10 +102,10 @@ export function DocumentsPage() {
                       'Could not delete this document.',
                     )
                   }
-                  onProcess={() =>
+                  onProcess={(status) =>
                     void runAction(
                       () =>
-                        (document.status === 'failed'
+                        (status === 'failed'
                           ? retry.mutateAsync(document.id)
                           : process.mutateAsync(document.id)),
                       'Could not process this document.',
@@ -149,9 +153,11 @@ function DocumentCard({
 }: {
   document: DocumentItem
   onDelete: () => void
-  onProcess: () => void
+  onProcess: (status: DocumentStatus) => void
 }) {
-  const isWorking = document.status === 'processing'
+  const statusQuery = useDocumentStatus(document.id, document.status === 'processing')
+  const status = statusQuery.data?.status ?? document.status
+  const isWorking = status === 'processing'
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
       <div className="flex items-start justify-between gap-4">
@@ -164,18 +170,18 @@ function DocumentCard({
             <p className="mt-1 text-xs text-slate-500">{formatBytes(document.size)}</p>
           </div>
         </div>
-        <StatusBadge status={document.status} />
+        <StatusBadge status={status} />
       </div>
       <div className="mt-5 flex items-center justify-between gap-3">
-        {document.status !== 'completed' && (
+        {status !== 'completed' && (
           <button
             className="inline-flex items-center gap-2 text-sm font-medium text-cyan-300 hover:text-cyan-200 disabled:opacity-50"
             disabled={isWorking}
-            onClick={onProcess}
+            onClick={() => onProcess(status)}
             type="button"
           >
             {isWorking ? <LoaderCircle className="animate-spin" size={16} /> : <RefreshCw size={16} />}
-            {document.status === 'failed' ? 'Retry' : 'Process'}
+            {status === 'failed' ? 'Retry' : 'Process'}
           </button>
         )}
         <button
