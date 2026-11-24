@@ -8,11 +8,13 @@ import {
   uploadDocument,
 } from './document.api'
 
-export const documentsQueryKey = ['documents']
+export const documentsQueryKey = ['documents'] as const
+export const documentListQueryKey = [...documentsQueryKey, 'list'] as const
+export const documentStatusQueryKey = [...documentsQueryKey, 'status'] as const
 
 export function useDocuments(page: number) {
   return useQuery({
-    queryKey: [...documentsQueryKey, page],
+    queryKey: [...documentListQueryKey, page],
     queryFn: () => getDocuments(page),
   })
 }
@@ -20,7 +22,7 @@ export function useDocuments(page: number) {
 export function useDocumentStatus(documentId: number, enabled: boolean) {
   return useQuery({
     enabled,
-    queryKey: [...documentsQueryKey, 'status', documentId],
+    queryKey: [...documentStatusQueryKey, documentId],
     queryFn: () => getDocumentStatus(documentId),
     refetchInterval: (query) =>
       query.state.data?.status === 'processing' ? 2_000 : false,
@@ -29,7 +31,8 @@ export function useDocumentStatus(documentId: number, enabled: boolean) {
 
 export function useDocumentMutations() {
   const queryClient = useQueryClient()
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: documentsQueryKey })
+  const invalidateLists = () =>
+    queryClient.invalidateQueries({ queryKey: documentListQueryKey })
 
   const upload = useMutation({
     mutationFn: ({
@@ -39,11 +42,11 @@ export function useDocumentMutations() {
       file: File
       onProgress?: (progress: number) => void
     }) => uploadDocument(file, onProgress),
-    onSuccess: invalidate,
+    onSuccess: invalidateLists,
   })
-  const process = useMutation({ mutationFn: processDocument, onSuccess: invalidate })
-  const retry = useMutation({ mutationFn: retryDocument, onSuccess: invalidate })
-  const remove = useMutation({ mutationFn: deleteDocument, onSuccess: invalidate })
+  const process = useMutation({ mutationFn: processDocument, onSuccess: invalidateLists })
+  const retry = useMutation({ mutationFn: retryDocument, onSuccess: invalidateLists })
+  const remove = useMutation({ mutationFn: deleteDocument, onSuccess: invalidateLists })
 
   return { upload, process, retry, remove }
 }

@@ -7,11 +7,14 @@ import {
   getConversations,
 } from './conversation.api'
 
-export const conversationsQueryKey = ['conversations']
+export const conversationsQueryKey = ['conversations'] as const
+export const conversationListQueryKey = [...conversationsQueryKey, 'list'] as const
+export const conversationDetailQueryKey = (conversationId: number) =>
+  [...conversationsQueryKey, 'detail', conversationId] as const
 
 export function useConversations() {
   return useQuery({
-    queryKey: conversationsQueryKey,
+    queryKey: conversationListQueryKey,
     queryFn: getConversations,
   })
 }
@@ -19,19 +22,46 @@ export function useConversations() {
 export function useConversation(conversationId: number | null) {
   return useQuery({
     enabled: conversationId !== null,
-    queryKey: [...conversationsQueryKey, conversationId],
+    queryKey:
+      conversationId === null
+        ? [...conversationsQueryKey, 'detail', null]
+        : conversationDetailQueryKey(conversationId),
     queryFn: () => getConversation(conversationId as number),
   })
 }
 
 export function useConversationMutations() {
   const queryClient = useQueryClient()
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
+  const invalidateList = () =>
+    queryClient.invalidateQueries({ queryKey: conversationListQueryKey })
 
   return {
-    create: useMutation({ mutationFn: ({ documentId, title }: { documentId: number; title?: string }) => createConversation(documentId, title), onSuccess: invalidate }),
-    ask: useMutation({ mutationFn: ({ conversationId, content }: { conversationId: number; content: string }) => askQuestion(conversationId, content), onSuccess: invalidate }),
-    remove: useMutation({ mutationFn: deleteConversation, onSuccess: invalidate }),
+    create: useMutation({
+      mutationFn: ({ documentId, title }: { documentId: number; title?: string }) =>
+        createConversation(documentId, title),
+      onSuccess: invalidateList,
+    }),
+    ask: useMutation({
+      mutationFn: ({ conversationId, content }: { conversationId: number; content: string }) =>
+        askQuestion(conversationId, content),
+      onSuccess: (_result, { conversationId }) =>
+        Promise.all([
+          invalidateList(),
+          queryClient.invalidateQueries({
+            queryKey: conversationDetailQueryKey(conversationId),
+            exact: true,
+          }),
+        ]),
+    }),
+    remove: useMutation({
+      mutationFn: deleteConversation,
+      onSuccess: (_result, conversationId) => {
+        queryClient.removeQueries({
+          queryKey: conversationDetailQueryKey(conversationId),
+          exact: true,
+        })
+        return invalidateList()
+      },
+    }),
   }
 }
